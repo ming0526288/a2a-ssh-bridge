@@ -1,0 +1,7 @@
+/connection.ini
+/.connection.ini.*
+/agent.ini
+/.token
+/..token.*
+/.state/
+__pycache__/

@@ -1,0 +1,5 @@
+[peer]
+address = peer.example.com
+port = 22
+username = lab-user
+password =
