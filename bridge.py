@@ -307,9 +307,14 @@ class Tasks:
             ):
                 self.items.popitem(last=False)
             self.items[task_id] = (job, None)
-        threading.Thread(
-            target=self.run, args=(job.copy(), tool, run_id, task_text, mode, thread_id, cursor), daemon=True,
-        ).start()
+        try:
+            threading.Thread(
+                target=self.run, args=(job.copy(), tool, run_id, task_text, mode, thread_id, cursor), daemon=True,
+            ).start()
+        except RuntimeError as error:
+            with self.lock:
+                self.items.pop(task_id, None)
+            raise RpcError(-32603, "Could not start diagnostic task") from error
         return job
 
     def run(self, job, tool, run_id, task_text, mode, thread_id, cursor):
@@ -321,6 +326,11 @@ class Tasks:
             data = execute(tool, run_id, task_text, mode, thread_id, cursor)
         except (OSError, subprocess.SubprocessError, ValueError, KeyError) as error:
             state, data = "failed", {"error": str(error), "run_id": run_id}
+        except Exception as error:
+            state, data = "failed", {
+                "error": f"Unexpected diagnostic task failure ({type(error).__name__})",
+                "run_id": run_id,
+            }
         else:
             state = "completed"
         job["status"] = {"state": state, "timestamp": timestamp()}
